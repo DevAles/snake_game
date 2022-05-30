@@ -1,3 +1,3 @@
 fn main() {
-    println!("Hello, world!");
+    snake_game::run().unwrap();
 }
