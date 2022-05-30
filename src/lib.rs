@@ -218,23 +218,23 @@ impl Player {
     }
 
     fn draw(&self, context: &mut Context) -> GameResult {
-       for segment in self.body.iter(){
-           let mesh = graphics::MeshBuilder::new()
+        for segment in self.body.iter() {
+            let mesh = graphics::MeshBuilder::new()
                 .rectangle(
-                graphics::DrawMode::fill(),
-                segment.position.into(),
+                    graphics::DrawMode::fill(),
+                    segment.position.into(),
                     graphics::Color::new(1.0, 0.5, 0.0, 1.0),
-        )?
-            .build(context)?;
+                )?
+                .build(context)?;
             graphics::draw(context, &mesh, graphics::DrawParam::default())?;
         }
         let mesh = graphics::MeshBuilder::new()
             .rectangle(
-            graphics::DrawMode::fill(),
-            self.head.position.into(),
-            graphics::Color::new(1.0, 0.0, 0.0, 1.0),
-        )?
-        .build(context)?;
+                graphics::DrawMode::fill(),
+                self.head.position.into(),
+                graphics::Color::new(1.0, 0.0, 0.0, 1.0),
+            )?
+            .build(context)?;
 
         graphics::draw(context, &mesh, graphics::DrawParam::default())?;
         Ok(())
@@ -264,30 +264,31 @@ impl GameState {
 
 impl event::EventHandler<ggez::GameError> for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        if Instant::now() - self.last_update >= Duration::from_millis(MS_PER_FRAME) {
-
-            if !self.game_over {
-                self.player.update(&self.food);
-
-                if let Some(collision) = self.player.collision {
-                    match collision {
-                        Collision::Food => {
-                            let new_food_position = GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
-                            self.food.position = new_food_position;
-                        }
-
-                        Collision::Itself => {
-                            self.game_over = true;
-                        }
-                    }
-                }
-            } else {
-                self.player = Player::new((GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into());
-                self.food = Food::new(GridPosition::random(GRID_SIZE.0, GRID_SIZE.1));
-                self.game_over = false;
-            }
-            self.last_update = Instant::now();
+        if Instant::now() - self.last_update < Duration::from_millis(MS_PER_FRAME) {
+            return Ok(());
         }
+        if self.game_over {
+            self.player = Player::new((GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into());
+            self.food = Food::new(GridPosition::random(GRID_SIZE.0, GRID_SIZE.1));
+            self.game_over = false;
+
+            return Ok(());
+        }
+        self.player.update(&self.food);
+
+        if let Some(collision) = self.player.collision {
+            match collision {
+                Collision::Food => {
+                    let new_food_position = GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
+                    self.food.position = new_food_position;
+                }
+
+                Collision::Itself => {
+                    self.game_over = true;
+                }
+            }
+        }
+        self.last_update = Instant::now();
         Ok(())
     }
 
