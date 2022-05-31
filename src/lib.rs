@@ -3,6 +3,7 @@ use ggez::{event, graphics, Context, GameResult};
 
 use std::collections::LinkedList;
 use std::time::{Duration, Instant};
+use std::thread::sleep;
 
 use rand::Rng;
 
@@ -268,6 +269,8 @@ impl event::EventHandler<ggez::GameError> for GameState {
             return Ok(());
         }
         if self.game_over {
+            sleep(Duration::from_millis(2000));
+
             self.player = Player::new((GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into());
             self.food = Food::new(GridPosition::random(GRID_SIZE.0, GRID_SIZE.1));
             self.game_over = false;
