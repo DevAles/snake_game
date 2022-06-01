@@ -2,8 +2,8 @@ use ggez::event::KeyCode;
 use ggez::{event, graphics, Context, GameResult};
 
 use std::collections::LinkedList;
-use std::time::{Duration, Instant};
 use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 use rand::Rng;
 
@@ -261,14 +261,26 @@ impl GameState {
             last_update: Instant::now(),
         })
     }
+    fn draw_game_over(&self, context: &mut Context) -> GameResult {
+        let text = graphics::Text::new(graphics::TextFragment {
+            text: format!("Game Over!\nScore: {}", self.player.body.len()),
+            font: Some(graphics::Font::default()),
+            color: Some(graphics::Color::new(1.0, 0.0, 0.0, 1.0)),
+            scale: Some(graphics::PxScale::from(50.0)),
+        });
+
+        graphics::draw(context, &text, graphics::DrawParam::default())?;
+        Ok(())
+    }
 }
 
 impl event::EventHandler<ggez::GameError> for GameState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(&mut self, context: &mut Context) -> GameResult {
         if Instant::now() - self.last_update < Duration::from_millis(MS_PER_FRAME) {
             return Ok(());
         }
         if self.game_over {
+            self.draw_game_over(context)?;
             sleep(Duration::from_millis(2000));
 
             self.player = Player::new((GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into());
