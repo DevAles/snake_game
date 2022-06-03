@@ -1,11 +1,14 @@
+use ggez::event::EventHandler;
 use ggez::event::KeyCode;
-use ggez::{event, graphics, Context, GameResult};
+use ggez::{event, graphics, Context, GameError, GameResult};
 
 use std::collections::LinkedList;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use rand::Rng;
+
+const GAME_TITLE: &str = "Snake Game";
 
 const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
 
@@ -261,36 +264,8 @@ impl GameState {
             last_update: Instant::now(),
         })
     }
-    fn draw_game_over(&self, context: &mut Context) -> GameResult {
-        let text = graphics::Text::new(graphics::TextFragment {
-            text: format!("Game Over!\nScore: {}", self.player.body.len()),
-            font: Some(graphics::Font::default()),
-            color: Some(graphics::Color::new(1.0, 0.0, 0.0, 1.0)),
-            scale: Some(graphics::PxScale::from(50.0)),
-        });
 
-        graphics::draw(context, &text, graphics::DrawParam::default())?;
-        Ok(())
-    }
-}
-
-impl event::EventHandler<ggez::GameError> for GameState {
-    fn update(&mut self, context: &mut Context) -> GameResult {
-        if Instant::now() - self.last_update < Duration::from_millis(MS_PER_FRAME) {
-            return Ok(());
-        }
-        if self.game_over {
-            self.draw_game_over(context)?;
-            sleep(Duration::from_millis(2000));
-
-            self.player = Player::new((GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into());
-            self.food = Food::new(GridPosition::random(GRID_SIZE.0, GRID_SIZE.1));
-            self.game_over = false;
-
-            return Ok(());
-        }
-        self.player.update(&self.food);
-
+    fn verify_collision(&mut self) {
         if let Some(collision) = self.player.collision {
             match collision {
                 Collision::Food => {
@@ -303,6 +278,44 @@ impl event::EventHandler<ggez::GameError> for GameState {
                 }
             }
         }
+    }
+
+    fn verify_game_over(&mut self, context: &mut Context) -> GameResult {
+        if self.game_over {
+            self.draw_game_over(context)?;
+
+            sleep(Duration::from_millis(2000));
+            *self = GameState::new()?;
+        }
+
+        Ok(())
+    }
+
+    fn draw_game_over(&self, context: &mut Context) -> GameResult {
+        let text = graphics::Text::new(graphics::TextFragment {
+            text: format!("Game Over!\nScore: {}", self.player.body.len()),
+            font: Some(graphics::Font::default()),
+            color: Some(graphics::Color::new(1.0, 0.0, 0.0, 1.0)),
+            scale: Some(graphics::PxScale::from(50.0)),
+        });
+
+        graphics::draw(context, &text, graphics::DrawParam::default())?;
+        graphics::present(context)?;
+
+        Ok(())
+    }
+}
+
+impl EventHandler<GameError> for GameState {
+    fn update(&mut self, context: &mut Context) -> GameResult {
+        if Instant::now() - self.last_update < Duration::from_millis(MS_PER_FRAME) {
+            return Ok(());
+        }
+
+        self.verify_game_over(context)?;
+        self.player.update(&self.food);
+        self.verify_collision();
+
         self.last_update = Instant::now();
         Ok(())
     }
@@ -322,7 +335,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
 
     fn key_down_event(
         &mut self,
-        _ctx: &mut Context,
+        _context: &mut Context,
         keycode: KeyCode,
         _keymods: event::KeyMods,
         _repeat: bool,
@@ -335,15 +348,18 @@ impl event::EventHandler<ggez::GameError> for GameState {
     }
 }
 
+fn build_context_and_event_loop() -> GameResult<(Context, event::EventLoop<()>)> {
+    let context = ggez::ContextBuilder::new(GAME_TITLE, "DevAles");
+    let window_setup = context.window_setup(ggez::conf::WindowSetup::default().title(GAME_TITLE));
+    let new_game = window_setup.window_mode(
+        ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0 as f32, SCREEN_SIZE.1 as f32),
+    );
+
+    new_game.build()
+}
+
 pub fn run() -> GameResult {
-    let (context, event_loop) = ggez::ContextBuilder::new("Snake Game", "DevAles")
-        .window_setup(ggez::conf::WindowSetup::default().title("Snake Game"))
-        .window_mode(
-            ggez::conf::WindowMode::default()
-                .dimensions(SCREEN_SIZE.0 as f32, SCREEN_SIZE.1 as f32),
-        )
-        .build()
-        .expect("Failed to build context!");
+    let (context, event_loop) = build_context_and_event_loop()?;
 
     let state = GameState::new()?;
     event::run(context, event_loop, state)
